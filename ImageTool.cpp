@@ -165,7 +165,10 @@ namespace sstd {
                     }
                     const auto varRate = 1.0 / items.size();
                     for (const auto & varI : items) {
-                        if (std::abs(arg - varI->thisAngle) > 45) {
+                        const auto varJudge = arg - varI->thisAngle;
+                        if (varJudge > 45) {/* 179 - 0 */
+                            mean = std::fma(varRate, varI->thisAngle + 180, mean);
+                        } else if (varJudge < -45) { /* 0 - 180 */
                             mean = std::fma(varRate, varI->thisAngle - 180, mean);
                         } else {
                             mean = std::fma(varRate, varI->thisAngle, mean);
