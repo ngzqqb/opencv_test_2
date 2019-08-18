@@ -7,6 +7,30 @@ namespace sstd {
 
     namespace private_eval_angle {
 
+        class QPointF {
+        public:
+            double x;
+            double y;
+        };
+
+        class QLineF {
+            QPointF thisStart;
+            QPointF thisEnd;
+        public:
+            inline double length()const {
+                return std::hypot(thisStart.x - thisEnd.x, thisStart.y - thisEnd.y);
+            }
+            inline double dx() const {
+                return thisEnd.x - thisStart.x;
+            inline double dy() const {
+                return thisEnd.y - thisStart.y;
+            }
+            inline QLineF(const QPointF & a, const QPointF & b) :
+                thisStart{ a }, 
+                thisEnd{b} {
+            }
+        };
+
         class LineItem : public QLineF {
         public:
             double thisLineLength/*线段长度*/;
@@ -37,9 +61,9 @@ namespace sstd {
             inline LineItem&operator=(LineItem &&) = delete;
         };
 
-        inline cv::Mat loadImage(const QString & arg) {
-            auto const varImageName = arg.toLocal8Bit();
-            return cv::imread({ varImageName.data(),
+        inline cv::Mat loadImage(const std::filesystem::path & arg) {
+            auto const varImageName = arg.string();
+            return cv::imread({ varImageName.c_str(),
                                 static_cast<std::size_t>(varImageName.size()) },
                 cv::IMREAD_GRAYSCALE);
         }
@@ -62,28 +86,6 @@ namespace sstd {
             return std::move(varAns);
         }
 
-        inline QImage toQImage(const cv::Mat & arg) {
-            if (arg.empty()) {
-                return{};
-            }
-            const auto varImageWidth = arg.cols;
-            const auto varImageHeight = arg.rows;
-
-            assert(arg.channels() == 1);
-            auto varImageWrap = std::make_unique< cv::Mat>();
-            arg.convertTo(*varImageWrap, CV_8UC1);
-            assert(varImageWidth == varImageWrap->cols);
-            assert(varImageHeight == varImageWrap->rows);
-            return QImage{
-                varImageWrap->data,
-                        varImageWidth,
-                        varImageHeight,
-                        static_cast<int>(varImageWrap->step),
-                        QImage::Format_Grayscale8,
-                        [](void * arg) { delete reinterpret_cast<cv::Mat *>(arg); },
-                varImageWrap.release() };
-        }
-
         inline std::vector< std::shared_ptr<LineItem> > houghLinesP(const cv::Mat & arg) {
             auto varLessLength = [](const auto & l, const auto & r) {
                 return l->thisLineLength > r->thisLineLength;
@@ -101,8 +103,8 @@ namespace sstd {
                 varAns.reserve(varLines.size());
                 for (const auto & varI : varLines) {
                     varAns.push_back(std::make_shared<LineItem>(QLineF{
-                        QPoint{ varI[0],varI[1] },
-                        QPoint{ varI[2],varI[3] } }));
+                        QPointF{ double(varI[0]),double(varI[1]) },
+                        QPointF{ double(varI[2]),double(varI[3]) } }));
                 }
             }
             constexpr std::size_t varMaxEleSize = 128;
@@ -125,7 +127,7 @@ namespace sstd {
 
     }/**/
 
-    double evalAngle(const QString & arg) try {
+    double evalAngle(const std::filesystem::path & arg) try {
         namespace ps = private_eval_angle;
         std::vector< std::shared_ptr<ps::LineItem> > varLines;
         {/**/
@@ -140,17 +142,6 @@ namespace sstd {
                 varCannyImage = ps::cannyImage(varHistogramImage);
             }
             varLines = ps::houghLinesP(varCannyImage);
-            if constexpr (true) {/* 测试绘制霍夫曼直线 */
-                QImage varImage{ arg };
-                {
-                    QPainter varPainter{ &varImage };
-                    for (const auto & varI : varLines) {
-                        varPainter.setPen(QPen{ QColor(230,std::rand() & 255,std::rand() & 127),2 });
-                        varPainter.drawLine(*varI);
-                    }
-                }
-                varImage.save(arg + QStringLiteral(".bmp"));
-            }
         }
 
         if (varLines.empty()) {/*没有找到符合要求的直线 .... */
@@ -221,12 +212,12 @@ namespace sstd {
     }
 
     cv::Mat rotateExternImage(
-        const QString & argImageInput,
+        const std::filesystem::path & argImageInput,
         double argAngle,
         int argMargin) try {
-        auto const varImageName = argImageInput.toLocal8Bit();
+        auto const varImageName = argImageInput.string();
         return rotateExternImage(
-            cv::imread({ varImageName.data(), static_cast<std::size_t>(varImageName.size()) }),
+            cv::imread({ varImageName.c_str(), static_cast<std::size_t>(varImageName.size()) }),
             argAngle,
             argMargin);
     } catch (const std::exception & e) {
@@ -256,13 +247,13 @@ namespace sstd {
             return std::move(argImage);
         }
         cv::Point2f varCenter(
-            (argImage.cols - 1) / 2.0,
-            (argImage.rows - 1) / 2.0);
+            (argImage.cols - 1) / 2.0f,
+            (argImage.rows - 1) / 2.0f);
         cv::Mat varRotateMatrix =
             cv::getRotationMatrix2D(varCenter, argAngle, 1.0);
         cv::Rect2f varBoundBox = cv::RotatedRect(cv::Point2f(),
             argImage.size(),
-            argAngle).boundingRect2f();
+            float(argAngle)).boundingRect2f();
         varRotateMatrix.at<double>(0, 2) +=
             varBoundBox.width / 2.0 - argImage.cols / 2.0;
         varRotateMatrix.at<double>(1, 2) +=
@@ -285,9 +276,9 @@ namespace sstd {
         return {};
     }
 
-    bool saveImage(const cv::Mat & arg, const QString & argFileName) {
-        const auto varImageName = argFileName.toLocal8Bit();
-        const cv::String varCVFileName{ varImageName.data(),
+    bool saveImage(const cv::Mat & arg, const std::filesystem::path & argFileName) {
+        const auto varImageName = argFileName.string();
+        const cv::String varCVFileName{ varImageName.c_str(),
                     static_cast<std::size_t>(varImageName.size()) };
         return cv::imwrite(varCVFileName, arg);
     }
