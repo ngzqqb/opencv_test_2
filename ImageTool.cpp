@@ -158,14 +158,18 @@ namespace sstd {
             public:
                 std::list< std::shared_ptr<ps::LineItem > > items;
                 double mean{ 0 };
-                void evalMean() {
+                inline void evalMean(double arg) {
                     mean = 0;
                     if (items.empty()) {
                         return;
                     }
                     const auto varRate = 1.0 / items.size();
                     for (const auto & varI : items) {
-                        mean = std::fma(varRate, varI->thisAngle, mean);
+                        if (std::abs(arg - varI->thisAngle) > 45) {
+                            mean = std::fma(varRate, varI->thisAngle - 180, mean);
+                        } else {
+                            mean = std::fma(varRate, varI->thisAngle, mean);
+                        }
                     }
                 }
             };
@@ -193,8 +197,12 @@ namespace sstd {
                 varAngleCount[varBeforeIndex].items.push_back(varI);
 
             }
-            for (auto & varI : varAngleCount) {
-                varI.evalMean();
+            {
+                int varIndex = 0;
+                for (auto & varI : varAngleCount) {
+                    varI.evalMean((varIndex + 0.5) * varAngleStep);
+                    ++varIndex;
+                }
             }
             return std::max_element(varAngleCount.begin(), varAngleCount.end(),
                 [](const auto & l, const auto & r) {/* size 大的 mean 小的 */
