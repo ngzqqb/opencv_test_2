@@ -1,7 +1,10 @@
 
 TEMPLATE = app
 
-CONFIG += c++17
+QT -= gui
+QT -= core
+
+QMAKE_CXXFLAGS += /std:c++latest
 
 INCLUDEPATH += $$PWD/StaticOpenCV/include
 
@@ -13,12 +16,11 @@ CONFIG(debug,debug|release){
     DEFINES *= NDEBUG
 }
 
-
 CONFIG(debug,debug|release){
     TARGET = rimage_debug
 }else{
     TARGET = rimage
 }
 
-
+SOURCES += $$PWD/main.cpp
 
