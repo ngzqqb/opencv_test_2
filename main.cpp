@@ -5,6 +5,9 @@
 #include <string_view>
 using namespace std::string_view_literals;
 
+#include <exception>
+#include <stdexcept>
+
 namespace the {
 
     class ProcessAImage {
@@ -69,6 +72,14 @@ namespace the {
                 pushAImage(thisImageNameOrRootPath);
             }
             std::cout << "共找到： "<< thisDutys.size() <<" 文件" <<std::endl ;
+            {
+                std::cout << "是否继续？[N/Y]" << std::endl;
+                std::string varLine;
+                std::getline(std::cin,varLine);
+                if (varLine.empty() || !( (varLine[0]=='y') ||(varLine[1]=='Y') )) {
+                    throw std::runtime_error("用户取消了任务！");
+                }
+            }
         }
 
         inline void apply() {
@@ -89,7 +100,7 @@ namespace the {
 
 int main(int argc, char ** argv) try {
 
-    if ( argc == 1 ) {
+    if ( argc == 1 ) try{
 
         std::filesystem::path varPath{ argv[0] };
         the::DutyGen varGen{ varPath.parent_path() };
@@ -97,7 +108,11 @@ int main(int argc, char ** argv) try {
         system("pause");
         return 0;
 
-    } 
+    } catch (const std::exception & e) {
+        std::cout << e.what() << std::endl;
+        system("pause");
+        return -1;
+    }
 
     the::DutyGen varGen{ argv[1] };
     varGen.apply();
