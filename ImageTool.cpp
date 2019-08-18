@@ -22,6 +22,7 @@ namespace sstd {
             }
             inline double dx() const {
                 return thisEnd.x - thisStart.x;
+            }
             inline double dy() const {
                 return thisEnd.y - thisStart.y;
             }
