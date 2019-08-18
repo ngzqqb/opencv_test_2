@@ -8,6 +8,12 @@
 *.so
 *.dll
 *.dylib
+*.vs/
+debug/
+release/
+*vcxproj*
+*.sln
+
 
 # Qt-es
 object_script.*.Release
